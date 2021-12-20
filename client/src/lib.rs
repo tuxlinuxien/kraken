@@ -1,3 +1,5 @@
-pub mod http;
+mod http;
 
-pub use http::sign;
+pub use http::private;
+pub use http::public;
+pub use http::Client;
