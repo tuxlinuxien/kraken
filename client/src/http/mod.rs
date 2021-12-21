@@ -6,4 +6,4 @@ mod libs;
 pub mod private;
 pub mod public;
 
-pub use client::Client;
+pub use self::client::Client;
