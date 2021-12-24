@@ -2,8 +2,9 @@ use chrono::Utc;
 use data_encoding::BASE64;
 use hmac::{Hmac, Mac};
 use reqwest;
+use serde::Deserialize;
+use serde_json::Value;
 use sha2::{Digest, Sha256, Sha512};
-use std::io;
 use std::io::Write;
 use thiserror::Error;
 
@@ -53,10 +54,18 @@ pub fn sign(path: &str, args: &[(&str, &str)], secret: &[u8]) -> String {
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("io error")]
-    Io(#[from] io::Error),
     #[error("request error")]
-    Other(#[from] reqwest::Error),
+    Request(#[from] reqwest::Error),
+    #[error("client error")]
+    Client(u16, String),
+    #[error("server error")]
+    Server(u16, String),
+}
+
+#[derive(Debug, Deserialize)]
+struct Response {
+    error: Vec<String>,
+    result: Value,
 }
 
 pub async fn public_request(path: &str, query: &[(&str, &str)]) -> Result<String, Error> {
@@ -93,5 +102,7 @@ pub async fn private_request(
     }
     let body = serde_urlencoded::to_string(params_secure).unwrap();
     builder = builder.body(body);
-    return Ok(builder.send().await?.text().await?);
+    let result: Response = builder.send().await?.json().await?;
+    println!("{:?}", result);
+    return Ok("".to_string());
 }
