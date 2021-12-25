@@ -11,8 +11,7 @@ async fn main() -> Result<(), api::Error> {
     let secret = data_encoding::BASE64.decode(&secret.as_bytes()).unwrap();
     let cred = api::Credential::new(&key, &secret);
 
-    let content =
-        api::private::open_positions(&cred, &["T3M7GE-L37EF-SZ2KLC"], false, "market").await?;
+    let content = api::private::trade_volume(&cred, &["XETCXETH"], true).await?;
     println!("{:?}", content);
     return Ok(());
 }

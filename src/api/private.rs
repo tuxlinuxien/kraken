@@ -156,6 +156,72 @@ pub async fn open_positions(
     return load_response(&response);
 }
 
+pub async fn ledgers(
+    cred: &Credential,
+    asset: Option<&str>,
+    aclass: Option<&str>,
+    type_: Option<&str>,
+    start: Option<i64>,
+    end: Option<i64>,
+    ofs: Option<i64>,
+) -> Result<Ledgers, Error> {
+    let mut params: Vec<(&str, &str)> = vec![];
+    if let Some(val) = asset {
+        params.push(("asset", &val));
+    }
+    if let Some(val) = aclass {
+        params.push(("aclass", &val));
+    }
+    if let Some(val) = type_ {
+        params.push(("type", &val));
+    }
+    let start_string;
+    if let Some(val) = start {
+        start_string = val.to_string();
+        params.push(("start", &start_string));
+    }
+    let end_string;
+    if let Some(val) = end {
+        end_string = val.to_string();
+        params.push(("end", &end_string));
+    }
+    let ofs_string;
+    if let Some(val) = ofs {
+        ofs_string = val.to_string();
+        params.push(("ofs", &ofs_string));
+    }
+    let response = private_request(&cred, "/0/private/Ledgers", &params).await?;
+    return load_response(&response);
+}
+
+pub async fn query_ledgers(
+    cred: &Credential,
+    id: &[&str],
+    trades: bool,
+) -> Result<HashMap<String, Ledger>, Error> {
+    let mut params: Vec<(&str, &str)> = vec![];
+    let trades = trades.to_string();
+    params.push(("trades", &trades));
+    let ids = id.join(",");
+    params.push(("id", &ids));
+    let response = private_request(&cred, "/0/private/QueryLedgers", &params).await?;
+    return load_response(&response);
+}
+
+pub async fn trade_volume(
+    cred: &Credential,
+    pair: &[&str],
+    fee_info: bool,
+) -> Result<TradeVolume, Error> {
+    let mut params: Vec<(&str, &str)> = vec![];
+    let pair = pair.join(",");
+    params.push(("pair", &pair));
+    let fee_info = fee_info.to_string();
+    params.push(("fee-info", &fee_info));
+    let response = private_request(&cred, "/0/private/TradeVolume", &params).await?;
+    return load_response(&response);
+}
+
 // TODO:
 // /0/private/ txid=[] docalcs=bool consolidation=market
 // /0/private/Ledgers asset=[] aclass="currency" type=""all"|"deposit"|"withdrawal"|"trade"|"margin"" start=int end=int ofs=int
@@ -258,4 +324,41 @@ pub struct OpenPosition {
     rollovertm: String,
     misc: String,
     oflags: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Ledger {
+    refid: String,
+    time: f64,
+    #[serde(rename = "type")]
+    type_: String,
+    subtype: String,
+    aclass: String,
+    asset: String,
+    amount: Decimal,
+    fee: Decimal,
+    balance: Decimal,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Ledgers {
+    ledger: HashMap<String, Ledger>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Fee {
+    fee: Decimal,
+    minfee: Decimal,
+    maxfee: Decimal,
+    nextfee: Option<Decimal>,
+    nextvolume: Option<Decimal>,
+    tiervolume: Decimal,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TradeVolume {
+    currency: String,
+    volume: Decimal,
+    fees: HashMap<String, Fee>,
+    fees_maker: HashMap<String, Fee>,
 }
