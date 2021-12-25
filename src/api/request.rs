@@ -3,7 +3,6 @@ use data_encoding::BASE64;
 use hmac::{Hmac, Mac};
 use reqwest;
 use serde::Deserialize;
-use serde_json::Value;
 use sha2::{Digest, Sha256, Sha512};
 use std::io::Write;
 use thiserror::Error;
@@ -56,16 +55,14 @@ pub fn sign(path: &str, args: &[(&str, &str)], secret: &[u8]) -> String {
 pub enum Error {
     #[error("request error")]
     Request(#[from] reqwest::Error),
+    #[error("json error")]
+    JSON(#[from] serde_json::Error),
     #[error("client error")]
     Client(u16, String),
     #[error("server error")]
     Server(u16, String),
-}
-
-#[derive(Debug, Deserialize)]
-struct Response {
-    error: Vec<String>,
-    result: Value,
+    #[error("api error")]
+    API(Vec<String>),
 }
 
 pub async fn public_request(path: &str, query: &[(&str, &str)]) -> Result<String, Error> {
@@ -102,7 +99,22 @@ pub async fn private_request(
     }
     let body = serde_urlencoded::to_string(params_secure).unwrap();
     builder = builder.body(body);
-    let result: Response = builder.send().await?.json().await?;
-    println!("{:?}", result);
-    return Ok("".to_string());
+    return Ok(builder.send().await?.text().await?);
+}
+
+#[derive(Debug, Deserialize)]
+struct Response<T> {
+    error: Vec<String>,
+    result: Option<T>,
+}
+
+pub fn load_response<T>(payload: &str) -> Result<T, Error>
+where
+    for<'a> T: Deserialize<'a>,
+{
+    let response: Response<T> = serde_json::from_str(payload)?;
+    if response.error.len() > 0 {
+        return Err(Error::API(response.error));
+    }
+    return Ok(response.result.unwrap());
 }
