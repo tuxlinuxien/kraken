@@ -1,1 +1,1 @@
-# kraken-cli
+# kraken

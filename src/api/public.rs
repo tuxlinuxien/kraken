@@ -3,102 +3,26 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub async fn time() -> Result<Time, Error> {
-    let response = public_request("/0/public/Time", &[]).await?;
-    return load_response(&response);
-}
-
-pub async fn system_status() -> Result<SystemStatus, Error> {
-    let response = public_request("/0/public/SystemStatus", &[]).await?;
-    return load_response(&response);
-}
-
-pub async fn assets(asset: &[&str], aclass: &str) -> Result<HashMap<String, Asset>, Error> {
-    let mut params: Vec<(&str, &str)> = vec![];
-    let asset = asset.join(",");
-    if asset != "" {
-        params.push(("asset", &asset));
-    }
-    if aclass != "" {
-        params.push(("aclass", aclass));
-    }
-    let response = public_request("/0/public/Assets", &params).await?;
-    return load_response(&response);
-}
-
-pub async fn asset_pair(pair: &[&str], info: &str) -> Result<HashMap<String, AssetPair>, Error> {
-    let pair = pair.join(",");
-    let info = if info == "" { "info" } else { info };
-    let params: Vec<(&str, &str)> = vec![("pair", &pair), ("info", info)];
-    let response = public_request("/0/public/AssetPairs", &params).await?;
-    return load_response(&response);
-}
-
-pub async fn ticker(pair: &str) -> Result<HashMap<String, Ticker>, Error> {
-    let response = public_request("/0/public/Ticker", &[("pair", pair)]).await?;
-    return load_response(&response);
-}
-
-pub async fn ohcl(
-    pair: &str,
-    interval: u64,
-    since: Option<u64>,
-) -> Result<HashMap<String, OHLC>, Error> {
-    let interval = interval.to_string();
-    let mut params = vec![("pair", pair), ("interval", &interval)];
-    // since doesn't live long enough without it.
-    let since_string;
-    if let Some(val) = since {
-        since_string = val.to_string();
-        params.push(("since", &since_string))
-    }
-    let response = public_request("/0/public/OHLC", &params).await?;
-    return load_response(&response);
-}
-
-pub async fn depth(pair: &str, count: Option<i64>) -> Result<HashMap<String, Depth>, Error> {
-    let mut params = vec![("pair", pair)];
-    let mut count_str = "100".to_string();
-    if let Some(val) = count {
-        count_str = val.to_string();
-    }
-    params.push(("count", &count_str));
-    let response = public_request("/0/public/Depth", &params).await?;
-    return load_response(&response);
-}
-
-pub async fn trades(pair: &str, since: Option<i64>) -> Result<HashMap<String, Trade>, Error> {
-    let mut params = vec![("pair", pair)];
-    let since_string;
-    if let Some(val) = since {
-        since_string = val.to_string();
-        params.push(("since", &since_string))
-    }
-    let response = public_request("/0/public/Trades", &params).await?;
-    return load_response(&response);
-}
-
-pub async fn spread(pair: &str, since: Option<i64>) -> Result<HashMap<String, Spread>, Error> {
-    let mut params = vec![("pair", pair)];
-    let since_string;
-    if let Some(val) = since {
-        since_string = val.to_string();
-        params.push(("since", &since_string))
-    }
-    let response = public_request("/0/public/Spread", &params).await?;
-    return load_response(&response);
-}
-
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Time {
+pub struct TimeResponse {
     unixtime: u64,
     rfc1123: String,
 }
 
+pub async fn time() -> Result<TimeResponse, Error> {
+    let response = public_request("/0/public/Time", &[]).await?;
+    return load_response(&response);
+}
+
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SystemStatus {
+pub struct SystemStatusResponse {
     status: String,
     timestamp: String,
+}
+
+pub async fn system_status() -> Result<SystemStatusResponse, Error> {
+    let response = public_request("/0/public/SystemStatus", &[]).await?;
+    return load_response(&response);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -107,6 +31,24 @@ pub struct Asset {
     altname: String,
     decimals: u64,
     display_decimals: u64,
+}
+
+pub type AssetsResponse = HashMap<String, Asset>;
+
+pub async fn assets(asset: Option<&[&str]>, aclass: Option<&str>) -> Result<AssetsResponse, Error> {
+    let mut params: Vec<(&str, &str)> = vec![];
+    let asset_string;
+    if let Some(val) = asset {
+        asset_string = val.join(",");
+        params.push(("asset", &asset_string));
+    }
+    let aclass_string;
+    if let Some(val) = aclass {
+        aclass_string = val;
+        params.push(("aclass", aclass_string));
+    }
+    let response = public_request("/0/public/Assets", &params).await?;
+    return load_response(&response);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -131,53 +73,146 @@ pub struct AssetPair {
     ordermin: Decimal,
 }
 
+pub type AssetPairResponse = HashMap<String, AssetPair>;
+
+pub async fn asset_pair(pair: &[&str], info: Option<&str>) -> Result<AssetPairResponse, Error> {
+    let mut params: Vec<(&str, &str)> = vec![];
+    let pair = pair.join(",");
+    params.push(("pair", &pair));
+    if let Some(val) = info {
+        params.push(("info", val));
+    }
+    let response = public_request("/0/public/AssetPairs", &params).await?;
+    return load_response(&response);
+}
+
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Ticker {
-    a: Vec<Decimal>,
-    b: Vec<Decimal>,
-    c: Vec<Decimal>,
-    v: Vec<Decimal>,
-    p: Vec<Decimal>,
-    t: Vec<Decimal>,
-    l: Vec<Decimal>,
-    h: Vec<Decimal>,
+pub struct AssetTickerInfo {
+    a: (Decimal, Decimal, Decimal),
+    b: (Decimal, Decimal, Decimal),
+    c: (Decimal, Decimal),
+    v: (Decimal, Decimal),
+    p: (Decimal, Decimal),
+    t: (Decimal, Decimal),
+    l: (Decimal, Decimal),
+    h: (Decimal, Decimal),
     o: Decimal,
+}
+
+pub type TickerResponse = HashMap<String, AssetTickerInfo>;
+
+pub async fn ticker(pair: &str) -> Result<TickerResponse, Error> {
+    let response = public_request("/0/public/Ticker", &[("pair", pair)]).await?;
+    return load_response(&response);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum OHLC {
     Last(u64),
-    Pair(
-        Vec<(
-            u64,
-            Decimal,
-            Decimal,
-            Decimal,
-            Decimal,
-            Decimal,
-            Decimal,
-            u64,
-        )>,
-    ),
+    Pair(OHLCTickData),
+}
+
+pub type OHLCTickData = Vec<(
+    u64,     // time
+    Decimal, // open
+    Decimal, // high
+    Decimal, // low
+    Decimal, // close
+    Decimal, // vwap
+    Decimal, // volume
+    u64,     // count
+)>;
+
+pub type OHLCResponse = HashMap<String, OHLC>;
+
+pub async fn ohcl(
+    pair: &str,
+    interval: Option<u64>,
+    since: Option<u64>,
+) -> Result<OHLCResponse, Error> {
+    let mut params = vec![("pair", pair)];
+    let interval_string;
+    if let Some(val) = interval {
+        interval_string = val.to_string();
+        params.push(("interval", &interval_string))
+    }
+    let since_string;
+    if let Some(val) = since {
+        since_string = val.to_string();
+        params.push(("since", &since_string))
+    }
+    let response = public_request("/0/public/OHLC", &params).await?;
+    return load_response(&response);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Depth {
-    asks: Vec<(Decimal, Decimal, u64)>,
-    bids: Vec<(Decimal, Decimal, u64)>,
+pub struct OrderBook {
+    asks: Vec<(
+        Decimal, // price
+        Decimal, // volume
+        u64,     // timestamp
+    )>,
+    bids: Vec<(
+        Decimal, // price
+        Decimal, // volume
+        u64,     // timestamp
+    )>,
+}
+
+pub type DepthResponse = HashMap<String, OrderBook>;
+
+pub async fn depth(pair: &str, count: Option<i64>) -> Result<DepthResponse, Error> {
+    let mut params = vec![("pair", pair)];
+    let count_str;
+    if let Some(val) = count {
+        count_str = val.to_string();
+        params.push(("count", &count_str));
+    }
+    let response = public_request("/0/public/Depth", &params).await?;
+    return load_response(&response);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Trade {
     Last(String),
-    Pair(Vec<(Decimal, Decimal, f64, String, String, String)>),
+    Pair(TradeTickData),
+}
+
+pub type TradeTickData = Vec<(Decimal, Decimal, f64, String, String, String)>;
+
+pub type TradesResponse = HashMap<String, Trade>;
+
+pub async fn trades(pair: &str, since: Option<i64>) -> Result<TradesResponse, Error> {
+    let mut params = vec![("pair", pair)];
+    let since_string;
+    if let Some(val) = since {
+        since_string = val.to_string();
+        params.push(("since", &since_string))
+    }
+    let response = public_request("/0/public/Trades", &params).await?;
+    return load_response(&response);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Spread {
     Last(u64),
-    Pair(Vec<(u64, Decimal, Decimal)>),
+    Pair(SpreadData),
+}
+
+pub type SpreadData = Vec<(u64, Decimal, Decimal)>;
+
+pub type SpreadResponse = HashMap<String, Spread>;
+
+pub async fn spread(pair: &str, since: Option<i64>) -> Result<SpreadResponse, Error> {
+    let mut params = vec![("pair", pair)];
+    let since_string;
+    if let Some(val) = since {
+        since_string = val.to_string();
+        params.push(("since", &since_string))
+    }
+    let response = public_request("/0/public/Spread", &params).await?;
+    return load_response(&response);
 }

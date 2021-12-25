@@ -222,12 +222,6 @@ pub async fn trade_volume(
     return load_response(&response);
 }
 
-// TODO:
-// /0/private/ txid=[] docalcs=bool consolidation=market
-// /0/private/Ledgers asset=[] aclass="currency" type=""all"|"deposit"|"withdrawal"|"trade"|"margin"" start=int end=int ofs=int
-// /0/private/QueryLedgers id=[] trades=false
-// /0/private/TradeVolume pair=string
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BalanceEx {
     balance: Decimal,
