@@ -1,47 +1,47 @@
 // use client;
 // use data_encoding::BASE64;
 
+use clap::{App, Arg, SubCommand};
 use kraken::api;
+use std::fmt::Debug;
+
+fn display<T>(output: T)
+where
+    T: Debug,
+{
+    println!("{:?}", output);
+}
 
 #[tokio::main]
 async fn main() -> Result<(), api::Error> {
-    let content = api::public::time().await?;
-    println!("{:?}", content);
-    let content = api::public::system_status().await?;
-    println!("{:?}", content);
-    let content = api::public::assets(None, None).await?;
-    println!("{:?}", content);
-    let content = api::public::asset_pair(&["XXBTZUSD", "XETHXXBT"], None).await?;
-    println!("{:?}", content);
-    let content = api::public::ticker("XBTUSD").await?;
-    println!("{:?}", content);
-    let content = api::public::ohcl("XBTUSD", None, None).await?;
-    println!("{:?}", content);
-    let content = api::public::depth("XBTUSD", None).await?;
-    println!("{:?}", content);
-    let content = api::public::trades("XBTUSD", None).await?;
-    println!("{:?}", content);
-    let content = api::public::spread("XBTUSD", None).await?;
-    println!("{:?}", content);
-
-    // TODO:
-    // - add cli
-    //
-    // into a .env file, add the following key:
-    // KRAKEN_KEY=<your key>
-    // KRAKEN_SECRET=<your secret>
-    //
-    // let key = dotenv::var("KRAKEN_KEY").unwrap();
-    // let secret = dotenv::var("KRAKEN_SECRET").unwrap();
-    // println!("{} {}", key, secret);
-    // let secret = data_encoding::BASE64.decode(&secret.as_bytes()).unwrap();
-    // let cred = api::Credential::new(&key, &secret);
-    // let content = api::private::balance(&cred).await?;
-    // println!("{:?}", content);
-    // let content = api::private::balance_ex(&cred).await?;
-    // println!("{:?}", content);
-    // let content = api::private::trade_volume(&cred, Some(&["XETCXETH"]), None).await?;
-    // println!("{:?}", content);
+    let matches = App::new("kraken-cli")
+        .version("0.9")
+        .author("Yoann Cerda <tuxlinuxien@gmail.com>")
+        .subcommand(SubCommand::with_name("time"))
+        .subcommand(SubCommand::with_name("system-status"))
+        .subcommand(
+            SubCommand::with_name("assets")
+                .arg(
+                    Arg::with_name("asset")
+                        .long("asset")
+                        .multiple(true)
+                        .takes_value(true),
+                )
+                .arg(Arg::with_name("aclass").long("aclass").takes_value(true)),
+        )
+        .get_matches();
+    match matches.subcommand_name() {
+        Some("time") => display(api::public::time().await?),
+        Some("system-status") => display(api::public::time().await?),
+        Some("assets") => {
+            let cmd = matches.subcommand_matches("assets").unwrap();
+            let asset = cmd.values_of("asset");
+            let aclass = cmd.values_of("aclass");
+            println!("{:?}, {:?}", asset, aclass);
+        }
+        Some(&_) => {}
+        None => {}
+    }
 
     return Ok(());
 }
