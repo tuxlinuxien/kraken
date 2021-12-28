@@ -163,6 +163,26 @@ async fn main() -> Result<(), anyhow::Error> {
                 .arg(Arg::with_name("asset").long("asset").takes_value(true)),
         )
         .subcommand(
+            SubCommand::with_name("open-orders")
+                .arg(Arg::with_name("trades").long("trades"))
+                .arg(Arg::with_name("userref").long("userref").takes_value(true)),
+        )
+        .subcommand(
+            SubCommand::with_name("closed-orders")
+                .arg(Arg::with_name("trades").long("trades"))
+                .arg(Arg::with_name("userref").long("userref").takes_value(true))
+                .arg(Arg::with_name("start").long("start").takes_value(true))
+                .arg(Arg::with_name("end").long("end").takes_value(true))
+                .arg(Arg::with_name("ofs").long("ofs").takes_value(true))
+                .arg(
+                    Arg::with_name("closetime")
+                        .long("closetime")
+                        .takes_value(true)
+                        .default_value("both")
+                        .possible_values(&["open", "close", "both"]),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("query-orders")
                 .arg(Arg::with_name("trades").long("trades"))
                 .arg(Arg::with_name("userref").long("userref").takes_value(true))
@@ -244,22 +264,28 @@ async fn main() -> Result<(), anyhow::Error> {
         Some("open-orders") => {
             let cmd = matches.subcommand_matches("open-orders").unwrap();
             let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
-            let trades = if cmd.value_of("trades").is_some() {
-                Some(true)
-            } else {
-                None
-            };
+            let trades = Some(cmd.is_present("trades"));
             let userref = parse_number_option(cmd.value_of("userref"))?;
             display(api::private::open_orders(&cred, trades, userref).await?);
+        }
+        Some("closed-orders") => {
+            let cmd = matches.subcommand_matches("closed-orders").unwrap();
+            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let trades = Some(cmd.is_present("trades"));
+            let userref = parse_number_option(cmd.value_of("userref"))?;
+            let start = parse_number_option(cmd.value_of("start"))?;
+            let end = parse_number_option(cmd.value_of("end"))?;
+            let ofs = parse_number_option(cmd.value_of("ofs"))?;
+            let closetime = cmd.value_of("closetime");
+            display(
+                api::private::closed_orders(&cred, trades, userref, start, end, ofs, closetime)
+                    .await?,
+            );
         }
         Some("query-orders") => {
             let cmd = matches.subcommand_matches("query-orders").unwrap();
             let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
-            let trades = if cmd.value_of("trades").is_some() {
-                Some(true)
-            } else {
-                None
-            };
+            let trades = Some(cmd.is_present("trades"));
             let userref = parse_number_option(cmd.value_of("userref"))?;
             let txid: Vec<&str> = cmd.values_of("txid").unwrap().map(|f| f).collect();
             display(api::private::query_orders(&cred, trades, userref, &txid).await?);

@@ -123,7 +123,7 @@ pub async fn closed_orders(
     start: Option<i64>,
     end: Option<i64>,
     ofs: Option<i64>,
-    closetime: Option<String>,
+    closetime: Option<&str>,
 ) -> Result<ClosedOrdersResponse, Error> {
     let mut params: Vec<(&str, &str)> = vec![];
     let trades_string;
