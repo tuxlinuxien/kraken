@@ -6,6 +6,7 @@ use clap::{App, Arg, SubCommand};
 use kraken::api;
 use serde::Serialize;
 use serde_json::to_string_pretty;
+use std::io::{self, Write};
 
 fn display<T>(output: T)
 where
@@ -18,7 +19,7 @@ where
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let matches = App::new("kraken-cli")
+    let app = App::new("kraken-cli")
         .version("0.9")
         .author("Yoann Cerda <tuxlinuxien@gmail.com>")
         .subcommand(SubCommand::with_name("time"))
@@ -107,8 +108,9 @@ async fn main() -> Result<(), anyhow::Error> {
                         .required(true),
                 )
                 .arg(Arg::with_name("count").long("count").takes_value(true)),
-        )
-        .get_matches();
+        );
+    let mut help = app.clone();
+    let matches = &app.get_matches();
     match matches.subcommand_name() {
         Some("time") => display(api::public::time().await?),
         Some("system-status") => display(api::public::time().await?),
@@ -203,8 +205,16 @@ async fn main() -> Result<(), anyhow::Error> {
             };
             display(api::public::spread(pair, count).await?)
         }
-        Some(&_) => {}
-        None => {}
+        Some(&_) => {
+            let mut out = io::stderr();
+            help.write_long_help(&mut out)?;
+            out.write("\n".as_bytes())?;
+        }
+        None => {
+            let mut out = io::stderr();
+            help.write_long_help(&mut out)?;
+            out.write("\n".as_bytes())?;
+        }
     }
 
     return Ok(());
