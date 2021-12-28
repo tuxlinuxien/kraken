@@ -1,9 +1,9 @@
 use anyhow::{anyhow, Context, Result};
 use clap::{App, Arg, SubCommand};
-use kraken::api;
+use data_encoding::BASE64;
+use kraken::api::{self, Credential};
 use serde::Serialize;
 use serde_json::to_string_pretty;
-use std::io::{self, Write};
 
 fn display<T>(output: T)
 where
@@ -14,11 +14,45 @@ where
     }
 }
 
+fn build_credentials(key: Option<&str>, secret: Option<&str>) -> Result<Credential> {
+    if key.is_none() {
+        return Err(anyhow!("missing credentials"));
+    }
+    if secret.is_none() {
+        return Err(anyhow!("missing credentials"));
+    }
+    let key = key.unwrap();
+    if key == "" {
+        return Err(anyhow!("missing key"));
+    }
+    let secret = secret.unwrap();
+    if secret == "" {
+        return Err(anyhow!("missing secret"));
+    }
+    let secret = secret.as_bytes();
+    let secret = BASE64.decode(secret).context("cannot decode secret")?;
+    return Ok(Credential::new(key, &secret));
+}
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let app = App::new("kraken-cli")
         .version("0.9")
         .author("Yoann Cerda <tuxlinuxien@gmail.com>")
+        .arg(
+            Arg::with_name("key")
+                .long("key")
+                .env("KRAKEN_KEY")
+                .takes_value(true)
+                .global(true),
+        )
+        .arg(
+            Arg::with_name("secret")
+                .long("secret")
+                .env("KRAKEN_SECRET")
+                .takes_value(true)
+                .global(true),
+        )
         .subcommand(SubCommand::with_name("time"))
         .subcommand(SubCommand::with_name("system-status"))
         .subcommand(
@@ -105,6 +139,12 @@ async fn main() -> Result<(), anyhow::Error> {
                         .required(true),
                 )
                 .arg(Arg::with_name("count").long("count").takes_value(true)),
+        )
+        .subcommand(SubCommand::with_name("balance"))
+        .subcommand(SubCommand::with_name("balance-ex"))
+        .subcommand(
+            SubCommand::with_name("trade-balance")
+                .arg(Arg::with_name("asset").long("asset").takes_value(true)),
         );
     let mut help = app.clone();
     let matches = &app.get_matches();
@@ -202,15 +242,26 @@ async fn main() -> Result<(), anyhow::Error> {
             };
             display(api::public::spread(pair, count).await?)
         }
+        Some("balance") => {
+            let cmd = matches.subcommand_matches("balance").unwrap();
+            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            display(api::private::balance(&cred).await?);
+        }
+        Some("balance-ex") => {
+            let cmd = matches.subcommand_matches("balance-ex").unwrap();
+            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            display(api::private::balance_ex(&cred).await?);
+        }
+        Some("trade-balance") => {
+            let cmd = matches.subcommand_matches("trade-balance").unwrap();
+            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            display(api::private::trade_balance(&cred, cmd.value_of("asset")).await?);
+        }
         Some(&_) => {
-            let mut out = io::stderr();
-            help.write_long_help(&mut out)?;
-            out.write("\n".as_bytes())?;
+            help.print_long_help()?;
         }
         None => {
-            let mut out = io::stderr();
-            help.write_long_help(&mut out)?;
-            out.write("\n".as_bytes())?;
+            help.print_long_help()?;
         }
     }
 
