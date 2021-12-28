@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use anyhow::{anyhow, Context, Result};
 use clap::{App, Arg, SubCommand};
 use data_encoding::BASE64;
@@ -32,6 +34,20 @@ fn build_credentials(key: Option<&str>, secret: Option<&str>) -> Result<Credenti
     let secret = secret.as_bytes();
     let secret = BASE64.decode(secret).context("cannot decode secret")?;
     return Ok(Credential::new(key, &secret));
+}
+
+fn parse_number_option<T>(val: Option<&str>) -> Result<Option<T>, anyhow::Error>
+where
+    T: FromStr,
+{
+    let val = match val {
+        Some(val) => match val.parse::<T>() {
+            Ok(val) => Some(val),
+            Err(_) => return Err(anyhow!("invalid input")),
+        },
+        None => None,
+    };
+    return Ok(val);
 }
 
 #[tokio::main]
@@ -145,7 +161,20 @@ async fn main() -> Result<(), anyhow::Error> {
         .subcommand(
             SubCommand::with_name("trade-balance")
                 .arg(Arg::with_name("asset").long("asset").takes_value(true)),
+        )
+        .subcommand(
+            SubCommand::with_name("query-orders")
+                .arg(Arg::with_name("trades").long("trades"))
+                .arg(Arg::with_name("userref").long("userref").takes_value(true))
+                .arg(
+                    Arg::with_name("txid")
+                        .long("txid")
+                        .takes_value(true)
+                        .multiple(true)
+                        .required(true),
+                ),
         );
+
     let mut help = app.clone();
     let matches = &app.get_matches();
     match matches.subcommand_name() {
@@ -164,13 +193,9 @@ async fn main() -> Result<(), anyhow::Error> {
         }
         Some("asset-pair") => {
             let cmd = matches.subcommand_matches("asset-pair").unwrap();
-            display(
-                api::public::asset_pair(
-                    &cmd.values_of("pair").unwrap().collect::<Vec<&str>>(),
-                    cmd.value_of("info"),
-                )
-                .await?,
-            )
+            let pair = cmd.values_of("pair").unwrap().collect::<Vec<&str>>();
+            let info = cmd.value_of("info");
+            display(api::public::asset_pair(&pair, info).await?)
         }
         Some("ticker") => {
             let cmd = matches.subcommand_matches("ticker").unwrap();
@@ -179,67 +204,26 @@ async fn main() -> Result<(), anyhow::Error> {
         Some("ohlc") => {
             let cmd = matches.subcommand_matches("ohlc").unwrap();
             let pair = cmd.value_of("pair").unwrap();
-            let interval: Option<u64> = if let Some(val) = cmd.value_of("interval") {
-                Some(val.parse::<u64>().unwrap())
-            } else {
-                None
-            };
-            let since: Option<u64> = if let Some(val) = cmd.value_of("since") {
-                Some(
-                    val.parse::<u64>()
-                        .context("since is not an valid integer")?,
-                )
-            } else {
-                None
-            };
+            let interval = parse_number_option(cmd.value_of("interval"))?;
+            let since = parse_number_option(cmd.value_of("since"))?;
             display(api::public::ohcl(pair, interval, since).await?)
         }
         Some("depth") => {
             let cmd = matches.subcommand_matches("depth").unwrap();
             let pair = cmd.value_of("pair").unwrap();
-            let count: Option<i64> = if let Some(val) = cmd.value_of("count") {
-                let val = val
-                    .parse::<i64>()
-                    .context("count is not an valid integer")?;
-                if val < 0 || val > 500 {
-                    return Err(anyhow!("count must be between 0 to 500"));
-                }
-                Some(val)
-            } else {
-                None
-            };
+            let count = parse_number_option(cmd.value_of("count"))?;
             display(api::public::depth(pair, count).await?)
         }
         Some("trades") => {
             let cmd = matches.subcommand_matches("trades").unwrap();
             let pair = cmd.value_of("pair").unwrap();
-            let count: Option<i64> = if let Some(val) = cmd.value_of("count") {
-                let val = val
-                    .parse::<i64>()
-                    .context("count is not an valid integer")?;
-                if val < 0 || val > 500 {
-                    return Err(anyhow!("count must be between 0 to 500"));
-                }
-                Some(val)
-            } else {
-                None
-            };
+            let count = parse_number_option(cmd.value_of("count"))?;
             display(api::public::trades(pair, count).await?)
         }
         Some("spread") => {
             let cmd = matches.subcommand_matches("spread").unwrap();
             let pair = cmd.value_of("pair").unwrap();
-            let count: Option<i64> = if let Some(val) = cmd.value_of("count") {
-                let val = val
-                    .parse::<i64>()
-                    .context("count is not an valid integer")?;
-                if val < 0 || val > 500 {
-                    return Err(anyhow!("count must be between 0 to 500"));
-                }
-                Some(val)
-            } else {
-                None
-            };
+            let count = parse_number_option(cmd.value_of("count"))?;
             display(api::public::spread(pair, count).await?)
         }
         Some("balance") => {
@@ -256,6 +240,29 @@ async fn main() -> Result<(), anyhow::Error> {
             let cmd = matches.subcommand_matches("trade-balance").unwrap();
             let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
             display(api::private::trade_balance(&cred, cmd.value_of("asset")).await?);
+        }
+        Some("open-orders") => {
+            let cmd = matches.subcommand_matches("open-orders").unwrap();
+            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let trades = if cmd.value_of("trades").is_some() {
+                Some(true)
+            } else {
+                None
+            };
+            let userref = parse_number_option(cmd.value_of("userref"))?;
+            display(api::private::open_orders(&cred, trades, userref).await?);
+        }
+        Some("query-orders") => {
+            let cmd = matches.subcommand_matches("query-orders").unwrap();
+            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let trades = if cmd.value_of("trades").is_some() {
+                Some(true)
+            } else {
+                None
+            };
+            let userref = parse_number_option(cmd.value_of("userref"))?;
+            let txid: Vec<&str> = cmd.values_of("txid").unwrap().map(|f| f).collect();
+            display(api::private::query_orders(&cred, trades, userref, &txid).await?);
         }
         Some(&_) => {
             help.print_long_help()?;
