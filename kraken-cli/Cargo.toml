@@ -1,0 +1,12 @@
+[package]
+name = "kraken-cli"
+version = "0.9.1"
+edition = "2021"
+
+[dependencies]
+kraken = { version = "*", path = "../kraken/" } 
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+clap = "2.34.0"
+anyhow = "1.0.52"

@@ -1,6 +1,3 @@
-// use client;
-// use data_encoding::BASE64;
-
 use anyhow::{anyhow, Context, Result};
 use clap::{App, Arg, SubCommand};
 use kraken::api;
