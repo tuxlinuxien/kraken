@@ -14,7 +14,7 @@ Library and cli bindings of the [kraken REST API](https://docs.kraken.com/rest/)
     Yoann Cerda <tuxlinuxien@gmail.com>
 
     USAGE:
-        kraken-cli [SUBCOMMAND]
+        kraken-cli [OPTIONS] [SUBCOMMAND]
 
     FLAGS:
         -h, --help
@@ -24,17 +24,39 @@ Library and cli bindings of the [kraken REST API](https://docs.kraken.com/rest/)
                 Prints version information
 
 
+    OPTIONS:
+            --key <key>
+                [env: KRAKEN_KEY=]
+
+            --secret <secret>
+                [env:
+                KRAKEN_SECRET=]
+
     SUBCOMMANDS:
-        asset-pair
-        assets
-        depth
-        help             Prints this message or the help of the given subcommand(s)
-        ohlc
-        spread
-        system-status
-        ticker
-        time
-        trades
+        asset-pair        Get tradable asset pairs.
+        assets            Get information about the assets that are available for deposit, withdrawal, trading and
+                        staking.
+        depth             Get Order book.
+        ohlc              Get OHLC data.
+        spread            Get recent spreads.
+        system-status     Get the current system status or trading mode.
+        ticker            Today's prices start at midnight UTC.
+        time              Get the server's time.
+        trades            Get recent trades.
+        balance           (private) Retrieve all cash balances, net of pending withdrawals.
+        balance-ex        (private) Retrieve all cash balances, net of pending withdrawals and hold trades.
+        closed-orders     (private) Retrieve information about orders that have been closed (filled or cancelled).
+        help              Prints this message or the help of the given subcommand(s)
+        ledgers           (private) Retrieve information about ledger entries.
+        open-orders       (private) Retrieve information about currently open orders.
+        open-positions    (private) Get information about open margin positions.
+        query-ledgers     (private) Retrieve information about specific ledger entries.
+        query-orders      (private) Retrieve information about specific orders.
+        query-trades      (private) Retrieve information about specific trades/fills.
+        trade-balance     (private) Retrieve a summary of collateral balances, margin position valuations, equity and
+                        margin level.
+        trade-volume      (private)
+        trades-history    (private) Retrieve information about trades/fills.
 
 ### Implementation
 
@@ -54,16 +76,16 @@ Private
 
 -   [x] balance
 -   [x] balance-ex
--   [x] trade_balance
--   [x] open_orders
+-   [x] trade-balance
+-   [x] open-orders
 -   [x] closed-orders
--   [x] query_orders
+-   [x] query-orders
 -   [x] trades-history
 -   [x] query-trades
 -   [x] open-positions
 -   [x] ledgers
 -   [x] query-ledgers
--   [x] trade_volume
+-   [x] trade-volume
 
 ## Lib
 

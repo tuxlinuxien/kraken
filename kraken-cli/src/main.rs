@@ -69,8 +69,8 @@ async fn main() -> Result<(), anyhow::Error> {
                 .takes_value(true)
                 .global(true),
         )
-        .subcommand(SubCommand::with_name("time"))
-        .subcommand(SubCommand::with_name("system-status"))
+        .subcommand(SubCommand::with_name("time").about("Get the server's time.").display_order(1))
+        .subcommand(SubCommand::with_name("system-status").about("Get the current system status or trading mode.").display_order(1))
         .subcommand(
             SubCommand::with_name("assets")
                 .arg(
@@ -79,7 +79,9 @@ async fn main() -> Result<(), anyhow::Error> {
                         .multiple(true)
                         .takes_value(true),
                 )
-                .arg(Arg::with_name("aclass").long("aclass").takes_value(true)),
+                .arg(Arg::with_name("aclass").long("aclass").takes_value(true))
+                .about("Get information about the assets that are available for deposit, withdrawal, trading and staking.")
+                .display_order(1),
         )
         .subcommand(
             SubCommand::with_name("asset-pair")
@@ -96,7 +98,9 @@ async fn main() -> Result<(), anyhow::Error> {
                         .takes_value(true)
                         .possible_values(&["info", "leverage", "fees", "margin"])
                         .default_value("info"),
-                ),
+                )
+                .about("Get tradable asset pairs.")
+                .display_order(1),
         )
         .subcommand(
             SubCommand::with_name("ticker").arg(
@@ -104,7 +108,9 @@ async fn main() -> Result<(), anyhow::Error> {
                     .long("pair")
                     .takes_value(true)
                     .required(true),
-            ),
+            )
+            .about("Today's prices start at midnight UTC.")
+            .display_order(1),
         )
         .subcommand(
             SubCommand::with_name("ohlc")
@@ -124,7 +130,9 @@ async fn main() -> Result<(), anyhow::Error> {
                         ])
                         .default_value("1"),
                 )
-                .arg(Arg::with_name("since").long("since").takes_value(true)),
+                .arg(Arg::with_name("since").long("since").takes_value(true))
+                .about("Get OHLC data.")
+                .display_order(1),
         )
         .subcommand(
             SubCommand::with_name("depth")
@@ -134,7 +142,9 @@ async fn main() -> Result<(), anyhow::Error> {
                         .takes_value(true)
                         .required(true),
                 )
-                .arg(Arg::with_name("count").long("count").takes_value(true)),
+                .arg(Arg::with_name("count").long("count").takes_value(true))
+                .about("Get Order book.")
+                .display_order(1),
         )
         .subcommand(
             SubCommand::with_name("trades")
@@ -144,7 +154,9 @@ async fn main() -> Result<(), anyhow::Error> {
                         .takes_value(true)
                         .required(true),
                 )
-                .arg(Arg::with_name("count").long("count").takes_value(true)),
+                .arg(Arg::with_name("count").long("count").takes_value(true))
+                .about("Get recent trades.")
+                .display_order(1),
         )
         .subcommand(
             SubCommand::with_name("spread")
@@ -154,18 +166,22 @@ async fn main() -> Result<(), anyhow::Error> {
                         .takes_value(true)
                         .required(true),
                 )
-                .arg(Arg::with_name("count").long("count").takes_value(true)),
+                .arg(Arg::with_name("count").long("count").takes_value(true))
+                .about("Get recent spreads.")
+                .display_order(1),
         )
-        .subcommand(SubCommand::with_name("balance"))
-        .subcommand(SubCommand::with_name("balance-ex"))
+        .subcommand(SubCommand::with_name("balance").about("(private) Retrieve all cash balances, net of pending withdrawals."))
+        .subcommand(SubCommand::with_name("balance-ex").about("(private) Retrieve all cash balances, net of pending withdrawals and hold trades."))
         .subcommand(
             SubCommand::with_name("trade-balance")
-                .arg(Arg::with_name("asset").long("asset").takes_value(true)),
+                .arg(Arg::with_name("asset").long("asset").takes_value(true))
+                .about("(private) Retrieve a summary of collateral balances, margin position valuations, equity and margin level."),
         )
         .subcommand(
             SubCommand::with_name("open-orders")
                 .arg(Arg::with_name("trades").long("trades").hidden(false))
-                .arg(Arg::with_name("userref").long("userref").takes_value(true)),
+                .arg(Arg::with_name("userref").long("userref").takes_value(true))
+                .about("(private) Retrieve information about currently open orders."),
         )
         .subcommand(
             SubCommand::with_name("closed-orders")
@@ -180,7 +196,7 @@ async fn main() -> Result<(), anyhow::Error> {
                         .takes_value(true)
                         .default_value("both")
                         .possible_values(&["open", "close", "both"]),
-                ),
+                ).about("(private) Retrieve information about orders that have been closed (filled or cancelled)."),
         )
         .subcommand(
             SubCommand::with_name("query-orders")
@@ -191,8 +207,8 @@ async fn main() -> Result<(), anyhow::Error> {
                         .long("txid")
                         .takes_value(true)
                         .multiple(true)
-                        .required(true),
-                ),
+                        .required(true)
+                ).about("(private) Retrieve information about specific orders."),
         )
         .subcommand(
             SubCommand::with_name("trades-history")
@@ -207,7 +223,7 @@ async fn main() -> Result<(), anyhow::Error> {
                             "closed position",
                             "closing position",
                             "no position",
-                        ]),
+                        ])
                 )
                 .arg(
                     Arg::with_name("trades")
@@ -218,7 +234,8 @@ async fn main() -> Result<(), anyhow::Error> {
                 .arg(Arg::with_name("userref").long("userref").takes_value(true))
                 .arg(Arg::with_name("start").long("start").takes_value(true))
                 .arg(Arg::with_name("end").long("end").takes_value(true))
-                .arg(Arg::with_name("ofs").long("ofs").takes_value(true)),
+                .arg(Arg::with_name("ofs").long("ofs").takes_value(true))
+                .about("(private) Retrieve information about trades/fills."),
         )
         .subcommand(
             SubCommand::with_name("query-trades")
@@ -229,7 +246,7 @@ async fn main() -> Result<(), anyhow::Error> {
                         .takes_value(true)
                         .multiple(true)
                         .required(true),
-                ),
+                ).about("(private) Retrieve information about specific trades/fills."),
         )
         .subcommand(
             SubCommand::with_name("open-positions")
@@ -246,7 +263,7 @@ async fn main() -> Result<(), anyhow::Error> {
                         .long("consolidation")
                         .takes_value(true)
                         .default_value("market"),
-                ),
+                ).about("(private) Get information about open margin positions."),
         )
         .subcommand(
             SubCommand::with_name("ledgers")
@@ -272,7 +289,8 @@ async fn main() -> Result<(), anyhow::Error> {
                 )
                 .arg(Arg::with_name("start").long("start").takes_value(true))
                 .arg(Arg::with_name("end").long("end").takes_value(true))
-                .arg(Arg::with_name("ofs").long("ofs").takes_value(true)),
+                .arg(Arg::with_name("ofs").long("ofs").takes_value(true))
+                .about("(private) Retrieve information about ledger entries."),
         )
         .subcommand(
             SubCommand::with_name("query-ledgers")
@@ -283,7 +301,8 @@ async fn main() -> Result<(), anyhow::Error> {
                         .multiple(true)
                         .required(true),
                 )
-                .arg(Arg::with_name("trades").long("trades")),
+                .arg(Arg::with_name("trades").long("trades"))
+                .about("(private) Retrieve information about specific ledger entries. "),
         )
         .subcommand(
             SubCommand::with_name("trade-volume")
@@ -293,7 +312,8 @@ async fn main() -> Result<(), anyhow::Error> {
                         .takes_value(true)
                         .multiple(true),
                 )
-                .arg(Arg::with_name("fee-info").long("fee-info").hidden(false)),
+                .arg(Arg::with_name("fee-info").long("fee-info").hidden(false))
+                .about("(private)"),
         );
 
     let mut help = app.clone();
@@ -451,9 +471,11 @@ async fn main() -> Result<(), anyhow::Error> {
         }
         Some(&_) => {
             help.print_long_help()?;
+            println!("");
         }
         None => {
             help.print_long_help()?;
+            println!("");
         }
     }
 
