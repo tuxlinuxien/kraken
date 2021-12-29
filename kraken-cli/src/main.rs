@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anyhow::{anyhow, Context, Result};
 use clap::{App, Arg, SubCommand};
 use data_encoding::BASE64;
-use kraken::api::{self, Credential};
+use kraken;
 use serde::Serialize;
 use serde_json::to_string_pretty;
 
@@ -16,24 +16,21 @@ where
     }
 }
 
-fn build_credentials(key: Option<&str>, secret: Option<&str>) -> Result<Credential> {
-    if key.is_none() {
-        return Err(anyhow!("missing credentials"));
-    }
-    if secret.is_none() {
-        return Err(anyhow!("missing credentials"));
+fn build_credentials(
+    key: Option<&str>,
+    secret: Option<&str>,
+) -> Result<Option<kraken::Credential>> {
+    if key.is_none() || secret.is_none() {
+        return Ok(None);
     }
     let key = key.unwrap();
-    if key == "" {
-        return Err(anyhow!("missing key"));
-    }
     let secret = secret.unwrap();
-    if secret == "" {
-        return Err(anyhow!("missing secret"));
+    if key == "" || secret == "" {
+        return Ok(None);
     }
     let secret = secret.as_bytes();
     let secret = BASE64.decode(secret).context("cannot decode secret")?;
-    return Ok(Credential::new(key, &secret));
+    return Ok(Some(kraken::Credential::new(key, &secret)));
 }
 
 fn parse_number_option<T>(val: Option<&str>) -> Result<Option<T>, anyhow::Error>
@@ -48,6 +45,15 @@ where
         None => None,
     };
     return Ok(val);
+}
+
+fn pretty_error(e: kraken::Error) -> anyhow::Error {
+    match e {
+        kraken::Error::API(e) => anyhow!("[API] {}", e),
+        kraken::Error::JSON(e) => anyhow!("[JSON DECODE] {}", e),
+        kraken::Error::Request(e) => anyhow!("[CLIENT] {}", e),
+        _ => anyhow!("unknown error"),
+    }
 }
 
 #[tokio::main]
@@ -318,9 +324,10 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let mut help = app.clone();
     let matches = &app.get_matches();
+    let cred = build_credentials(matches.value_of("key"), matches.value_of("secret"))?;
     match matches.subcommand_name() {
-        Some("time") => display(api::public::time().await?),
-        Some("system-status") => display(api::public::time().await?),
+        Some("time") => display(kraken::public::time().await.map_err(pretty_error)?),
+        Some("system-status") => display(kraken::public::time().await.map_err(pretty_error)?),
         Some("assets") => {
             let cmd = matches.subcommand_matches("assets").unwrap();
             let asset: Option<Vec<&str>> = if let Some(items) = cmd.values_of("asset") {
@@ -330,69 +337,111 @@ async fn main() -> Result<(), anyhow::Error> {
             };
 
             let aclass = cmd.value_of("aclass");
-            display(api::public::assets(asset.as_deref(), aclass).await?)
+            display(
+                kraken::public::assets(asset.as_deref(), aclass)
+                    .await
+                    .map_err(pretty_error)?,
+            )
         }
         Some("asset-pair") => {
             let cmd = matches.subcommand_matches("asset-pair").unwrap();
             let pair = cmd.values_of("pair").unwrap().collect::<Vec<&str>>();
             let info = cmd.value_of("info");
-            display(api::public::asset_pair(&pair, info).await?)
+            display(
+                kraken::public::asset_pair(&pair, info)
+                    .await
+                    .map_err(pretty_error)?,
+            )
         }
         Some("ticker") => {
             let cmd = matches.subcommand_matches("ticker").unwrap();
-            display(api::public::ticker(cmd.value_of("pair").unwrap()).await?)
+            display(
+                kraken::public::ticker(cmd.value_of("pair").unwrap())
+                    .await
+                    .map_err(pretty_error)?,
+            )
         }
         Some("ohlc") => {
             let cmd = matches.subcommand_matches("ohlc").unwrap();
             let pair = cmd.value_of("pair").unwrap();
             let interval = parse_number_option(cmd.value_of("interval"))?;
             let since = parse_number_option(cmd.value_of("since"))?;
-            display(api::public::ohcl(pair, interval, since).await?)
+            display(
+                kraken::public::ohcl(pair, interval, since)
+                    .await
+                    .map_err(pretty_error)?,
+            )
         }
         Some("depth") => {
             let cmd = matches.subcommand_matches("depth").unwrap();
             let pair = cmd.value_of("pair").unwrap();
             let count = parse_number_option(cmd.value_of("count"))?;
-            display(api::public::depth(pair, count).await?)
+            display(
+                kraken::public::depth(pair, count)
+                    .await
+                    .map_err(pretty_error)?,
+            )
         }
         Some("trades") => {
             let cmd = matches.subcommand_matches("trades").unwrap();
             let pair = cmd.value_of("pair").unwrap();
             let count = parse_number_option(cmd.value_of("count"))?;
-            display(api::public::trades(pair, count).await?)
+            display(
+                kraken::public::trades(pair, count)
+                    .await
+                    .map_err(pretty_error)?,
+            )
         }
         Some("spread") => {
             let cmd = matches.subcommand_matches("spread").unwrap();
             let pair = cmd.value_of("pair").unwrap();
             let count = parse_number_option(cmd.value_of("count"))?;
-            display(api::public::spread(pair, count).await?)
+            display(
+                kraken::public::spread(pair, count)
+                    .await
+                    .map_err(pretty_error)?,
+            )
         }
         // private endpoints
         Some("balance") => {
-            let cmd = matches.subcommand_matches("balance").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
-            display(api::private::balance(&cred).await?);
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
+            display(
+                kraken::private::balance(&cred)
+                    .await
+                    .map_err(pretty_error)?,
+            );
         }
         Some("balance-ex") => {
-            let cmd = matches.subcommand_matches("balance-ex").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
-            display(api::private::balance_ex(&cred).await?);
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
+            display(
+                kraken::private::balance_ex(&cred)
+                    .await
+                    .map_err(pretty_error)?,
+            );
         }
         Some("trade-balance") => {
             let cmd = matches.subcommand_matches("trade-balance").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
-            display(api::private::trade_balance(&cred, cmd.value_of("asset")).await?);
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
+            display(
+                kraken::private::trade_balance(&cred, cmd.value_of("asset"))
+                    .await
+                    .map_err(pretty_error)?,
+            );
         }
         Some("open-orders") => {
             let cmd = matches.subcommand_matches("open-orders").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
             let trades = Some(cmd.is_present("trades"));
             let userref = parse_number_option(cmd.value_of("userref"))?;
-            display(api::private::open_orders(&cred, trades, userref).await?);
+            display(
+                kraken::private::open_orders(&cred, trades, userref)
+                    .await
+                    .map_err(pretty_error)?,
+            );
         }
         Some("closed-orders") => {
             let cmd = matches.subcommand_matches("closed-orders").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
             let trades = Some(cmd.is_present("trades"));
             let userref = parse_number_option(cmd.value_of("userref"))?;
             let start = parse_number_option(cmd.value_of("start"))?;
@@ -400,46 +449,63 @@ async fn main() -> Result<(), anyhow::Error> {
             let ofs = parse_number_option(cmd.value_of("ofs"))?;
             let closetime = cmd.value_of("closetime");
             display(
-                api::private::closed_orders(&cred, trades, userref, start, end, ofs, closetime)
-                    .await?,
+                kraken::private::closed_orders(&cred, trades, userref, start, end, ofs, closetime)
+                    .await
+                    .map_err(pretty_error)?,
             );
         }
         Some("query-orders") => {
             let cmd = matches.subcommand_matches("query-orders").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
             let trades = Some(cmd.is_present("trades"));
             let userref = parse_number_option(cmd.value_of("userref"))?;
             let txid: Vec<&str> = cmd.values_of("txid").unwrap().map(|f| f).collect();
-            display(api::private::query_orders(&cred, trades, userref, &txid).await?);
+            display(
+                kraken::private::query_orders(&cred, trades, userref, &txid)
+                    .await
+                    .map_err(pretty_error)?,
+            );
         }
         Some("trades-history") => {
             let cmd = matches.subcommand_matches("trades-history").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
             let trades = Some(cmd.is_present("trades"));
             let type_ = cmd.value_of("type");
             let start = parse_number_option(cmd.value_of("start"))?;
             let end = parse_number_option(cmd.value_of("end"))?;
             let ofs = parse_number_option(cmd.value_of("ofs"))?;
-            display(api::private::trades_history(&cred, type_, trades, start, end, ofs).await?);
+            display(
+                kraken::private::trades_history(&cred, type_, trades, start, end, ofs)
+                    .await
+                    .map_err(pretty_error)?,
+            );
         }
         Some("query-trades") => {
             let cmd = matches.subcommand_matches("query-trades").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
             let trades = Some(cmd.is_present("trades"));
             let txid: Vec<&str> = cmd.values_of("txid").unwrap().map(|f| f).collect();
-            display(api::private::query_trades(&cred, &txid, trades).await?);
+            display(
+                kraken::private::query_trades(&cred, &txid, trades)
+                    .await
+                    .map_err(pretty_error)?,
+            );
         }
         Some("open-positions") => {
             let cmd = matches.subcommand_matches("open-positions").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
             let txid: Vec<&str> = cmd.values_of("txid").unwrap().map(|f| f).collect();
             let docalcs = Some(cmd.is_present("docalcs"));
             let consolidation = cmd.value_of("consolidation").unwrap();
-            display(api::private::open_positions(&cred, &txid, docalcs, consolidation).await?);
+            display(
+                kraken::private::open_positions(&cred, &txid, docalcs, consolidation)
+                    .await
+                    .map_err(pretty_error)?,
+            );
         }
         Some("ledgers") => {
             let cmd = matches.subcommand_matches("ledgers").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
             let asset: Option<Vec<&str>> = cmd
                 .values_of("asset")
                 .map(|f| f.into_iter().map(|v| v).collect());
@@ -449,25 +515,34 @@ async fn main() -> Result<(), anyhow::Error> {
             let end = parse_number_option(cmd.value_of("end"))?;
             let ofs = parse_number_option(cmd.value_of("ofs"))?;
             display(
-                api::private::ledgers(&cred, asset.as_deref(), aclass, type_, start, end, ofs)
-                    .await?,
+                kraken::private::ledgers(&cred, asset.as_deref(), aclass, type_, start, end, ofs)
+                    .await
+                    .map_err(pretty_error)?,
             );
         }
         Some("query-ledgers") => {
             let cmd = matches.subcommand_matches("query-ledgers").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
             let id: Vec<&str> = cmd.values_of("id").unwrap().map(|f| f).collect();
             let trades = Some(cmd.is_present("trades"));
-            display(api::private::query_ledgers(&cred, &id, trades).await?);
+            display(
+                kraken::private::query_ledgers(&cred, &id, trades)
+                    .await
+                    .map_err(pretty_error)?,
+            );
         }
         Some("trade-volume") => {
             let cmd = matches.subcommand_matches("trade-volume").unwrap();
-            let cred = build_credentials(cmd.value_of("key"), cmd.value_of("secret"))?;
+            let cred = cred.ok_or(anyhow!("missing credentials"))?;
             let pair: Option<Vec<&str>> = cmd
                 .values_of("pair")
                 .map(|f| f.into_iter().map(|v| v).collect());
             let fee_info = Some(cmd.is_present("fee-info"));
-            display(api::private::trade_volume(&cred, pair.as_deref(), fee_info).await?);
+            display(
+                kraken::private::trade_volume(&cred, pair.as_deref(), fee_info)
+                    .await
+                    .map_err(pretty_error)?,
+            );
         }
         Some(&_) => {
             help.print_long_help()?;

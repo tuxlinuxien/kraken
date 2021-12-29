@@ -5,8 +5,17 @@ use reqwest;
 use serde::Deserialize;
 use sha2::{Digest, Sha256, Sha512};
 use std::io::Write;
+use std::time::Duration;
 use thiserror::Error;
 
+/// This valud is set to 10 sec since the nonce as a
+/// limit of few seconds only. If this valud is too short,
+/// please another network.
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Stores the credentials used for private enpoints.
+/// The key must be decoded before being passed or payload
+/// signing will fail.
 #[derive(Debug, Clone)]
 pub struct Credential {
     key: String,
@@ -57,20 +66,19 @@ pub enum Error {
     Request(#[from] reqwest::Error),
     #[error("json error")]
     JSON(#[from] serde_json::Error),
-    #[error("client error")]
-    Client(u16, String),
-    #[error("server error")]
-    Server(u16, String),
-    #[error("api error")]
-    API(Vec<String>),
+    #[error("api error {0}")]
+    API(String),
 }
 
+/// Performs a request against a public endpoint.
 pub async fn public_request(path: &str, query: &[(&str, &str)]) -> Result<String, Error> {
     let client = reqwest::Client::new();
-    let builder = client.get(build_url(path, query));
+    let builder = client.get(build_url(path, query)).timeout(DEFAULT_TIMEOUT);
     return Ok(builder.send().await?.text().await?);
 }
 
+/// Performs a request against a private endpoint where
+/// credentials will be needed.
 pub async fn private_request(
     cred: &Credential,
     path: &str,
@@ -93,7 +101,7 @@ pub async fn private_request(
         ),
     ];
     let client = reqwest::Client::new();
-    let mut builder = client.post(build_url(path, &[]));
+    let mut builder = client.post(build_url(path, &[])).timeout(DEFAULT_TIMEOUT);
     for item in headers {
         builder = builder.header(item.0, item.1);
     }
@@ -108,13 +116,14 @@ struct Response<T> {
     result: Option<T>,
 }
 
+/// Returns an object of type T if the error field is an empty array.
 pub fn load_response<T>(payload: &str) -> Result<T, Error>
 where
     for<'a> T: Deserialize<'a>,
 {
     let response: Response<T> = serde_json::from_str(payload)?;
     if response.error.len() > 0 {
-        return Err(Error::API(response.error));
+        return Err(Error::API(response.error.join(" ")));
     }
     return Ok(response.result.unwrap());
 }
@@ -126,6 +135,7 @@ mod tests {
 
     #[test]
     fn sign_test() {
+        // api credentials are taken from the official kraken api documentation.
         let args = vec![
             ("nonce", "1616492376594"),
             ("ordertype", "limit"),

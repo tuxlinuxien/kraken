@@ -490,7 +490,7 @@ dependencies = [
 
 [[package]]
 name = "kraken"
-version = "0.9.2"
+version = "1.0.0"
 dependencies = [
  "async-trait",
  "bytes",
@@ -511,7 +511,7 @@ dependencies = [
 
 [[package]]
 name = "kraken-cli"
-version = "0.9.2"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
