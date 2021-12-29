@@ -200,6 +200,12 @@ pub struct Trade {
     vol: Decimal,
     margin: Decimal,
     misc: String,
+    ccost: Option<Decimal>,
+    cfee: Option<Decimal>,
+    cvol: Option<Decimal>,
+    cmargin: Option<Decimal>,
+    net: Option<Decimal>,
+    trades: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -328,7 +334,7 @@ pub struct LedgersResponse {
 
 pub async fn ledgers(
     cred: &Credential,
-    asset: Option<&str>,
+    asset: Option<&[&str]>,
     aclass: Option<&str>,
     type_: Option<&str>,
     start: Option<i64>,
@@ -336,8 +342,10 @@ pub async fn ledgers(
     ofs: Option<i64>,
 ) -> Result<LedgersResponse, Error> {
     let mut params: Vec<(&str, &str)> = vec![];
+    let asset_string;
     if let Some(val) = asset {
-        params.push(("asset", &val));
+        asset_string = val.join(",");
+        params.push(("asset", &asset_string));
     }
     if let Some(val) = aclass {
         params.push(("aclass", &val));

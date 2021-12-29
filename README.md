@@ -52,18 +52,18 @@ Public
 
 Private
 
--   [ ] balance
--   [ ] balance_ex
--   [ ] trade_balance
--   [ ] open_orders
--   [ ] closed_orders
--   [ ] query_orders
--   [ ] trades_history
--   [ ] query_trades
--   [ ] open_positions
--   [ ] ledgers
--   [ ] query_ledgers
--   [ ] trade_volume
+-   [x] balance
+-   [x] balance-ex
+-   [x] trade_balance
+-   [x] open_orders
+-   [x] closed-orders
+-   [x] query_orders
+-   [x] trades-history
+-   [x] query-trades
+-   [x] open-positions
+-   [x] ledgers
+-   [x] query-ledgers
+-   [x] trade_volume
 
 ## Lib
 
