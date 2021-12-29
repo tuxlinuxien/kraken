@@ -16,21 +16,52 @@ where
     }
 }
 
-fn build_credentials(
+fn load_credentials_from_args(key: Option<&str>, secret: Option<&str>) -> Option<(String, String)> {
+    let key = key.unwrap_or("");
+    let secret = secret.unwrap_or("");
+    if key == "" || secret == "" {
+        return None;
+    }
+    Some((key.to_string(), secret.to_string()))
+}
+
+async fn load_credentials_from_file(credentials: Option<&str>) -> Result<Option<(String, String)>> {
+    let credentials = credentials.unwrap_or("");
+    if credentials == "" {
+        return Ok(None);
+    }
+    let content = tokio::fs::read_to_string(credentials)
+        .await
+        .map_err(|e| anyhow!("cannot open {} ({})", credentials, e))?;
+    let lines: Vec<&str> = content.lines().map(|l| l).collect();
+    // ensure extra lines at the end of the file won't cause any error.
+    // the credential file must be generated as:
+    // <API_KEY>\n
+    // <API_SECRET>\n
+    if lines.len() < 2 {
+        return Err(anyhow!("invalid credential file"));
+    }
+    let key = *lines.get(0).unwrap();
+    let secret = *lines.get(1).unwrap();
+    Ok(Some((key.to_string(), secret.to_string())))
+}
+
+async fn build_credentials(
     key: Option<&str>,
     secret: Option<&str>,
+    cred_file: Option<&str>,
 ) -> Result<Option<kraken::Credential>> {
-    if key.is_none() || secret.is_none() {
+    let key_pair_args = load_credentials_from_args(key, secret);
+    let key_pair_file = load_credentials_from_file(cred_file).await?;
+    // pick one of them.
+    let key_pair = key_pair_args.or(key_pair_file);
+    if key_pair.is_none() {
         return Ok(None);
     }
-    let key = key.unwrap();
-    let secret = secret.unwrap();
-    if key == "" || secret == "" {
-        return Ok(None);
-    }
+    let (key, secret) = key_pair.unwrap();
     let secret = secret.as_bytes();
     let secret = BASE64.decode(secret).context("cannot decode secret")?;
-    return Ok(Some(kraken::Credential::new(key, &secret)));
+    return Ok(Some(kraken::Credential::new(&key, &secret)));
 }
 
 fn parse_number_option<T>(val: Option<&str>) -> Result<Option<T>, anyhow::Error>
@@ -58,7 +89,7 @@ fn pretty_error(e: kraken::Error) -> anyhow::Error {
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let app = App::new("kraken-cli")
-        .version("0.9")
+        .version("1.0.1")
         .author("Yoann Cerda <tuxlinuxien@gmail.com>")
         .arg(
             Arg::with_name("key")
@@ -73,6 +104,14 @@ async fn main() -> Result<(), anyhow::Error> {
                 .env("KRAKEN_SECRET")
                 .takes_value(true)
                 .global(true),
+        )
+        .arg(
+            Arg::with_name("credentials")
+                .long("credentials")
+                .env("CREDENTIALS")
+                .takes_value(true)
+                .global(true)
+                .help("path of file that contains your key and secret"),
         )
         .subcommand(SubCommand::with_name("time").about("Get the server's time.").display_order(1))
         .subcommand(SubCommand::with_name("system-status").about("Get the current system status or trading mode.").display_order(1))
@@ -323,7 +362,12 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let mut help = app.clone();
     let matches = &app.get_matches();
-    let cred = build_credentials(matches.value_of("key"), matches.value_of("secret"))?;
+    let cred = build_credentials(
+        matches.value_of("key"),
+        matches.value_of("secret"),
+        matches.value_of("credentials"),
+    )
+    .await?;
     match matches.subcommand_name() {
         Some("time") => display(kraken::public::time().await.map_err(pretty_error)?),
         Some("system-status") => display(kraken::public::time().await.map_err(pretty_error)?),

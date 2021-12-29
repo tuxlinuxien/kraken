@@ -10,32 +10,24 @@ Library and cli bindings of the [kraken REST API](https://docs.kraken.com/rest/)
 
 ### Usage
 
-    kraken-cli 0.9
+    kraken-cli 1.0.1
     Yoann Cerda <tuxlinuxien@gmail.com>
 
     USAGE:
         kraken-cli [OPTIONS] [SUBCOMMAND]
 
     FLAGS:
-        -h, --help
-                Prints help information
-
-        -V, --version
-                Prints version information
-
+        -h, --help       Prints help information
+        -V, --version    Prints version information
 
     OPTIONS:
-            --key <key>
-                [env: KRAKEN_KEY=]
-
-            --secret <secret>
-                [env:
-                KRAKEN_SECRET=]
+            --credentials <credentials>    path of file that contains your key and secret [env: CREDENTIALS=]
+            --key <key>                     [env: KRAKEN_KEY=]
+            --secret <secret>               [env: KRAKEN_SECRET=]
 
     SUBCOMMANDS:
         asset-pair        Get tradable asset pairs.
-        assets            Get information about the assets that are available for deposit, withdrawal, trading and
-                        staking.
+        assets            Get information about the assets that are available for deposit, withdrawal, trading and staking.
         depth             Get Order book.
         ohlc              Get OHLC data.
         spread            Get recent spreads.
@@ -53,8 +45,7 @@ Library and cli bindings of the [kraken REST API](https://docs.kraken.com/rest/)
         query-ledgers     (private) Retrieve information about specific ledger entries.
         query-orders      (private) Retrieve information about specific orders.
         query-trades      (private) Retrieve information about specific trades/fills.
-        trade-balance     (private) Retrieve a summary of collateral balances, margin position valuations, equity and
-                        margin level.
+        trade-balance     (private) Retrieve a summary of collateral balances, margin position valuations, equity and margin level.
         trade-volume      (private)
         trades-history    (private) Retrieve information about trades/fills.
 
