@@ -52,7 +52,6 @@ fn pretty_error(e: kraken::Error) -> anyhow::Error {
         kraken::Error::API(e) => anyhow!("[API] {}", e),
         kraken::Error::JSON(e) => anyhow!("[JSON DECODE] {}", e),
         kraken::Error::Request(e) => anyhow!("[CLIENT] {}", e),
-        _ => anyhow!("unknown error"),
     }
 }
 
