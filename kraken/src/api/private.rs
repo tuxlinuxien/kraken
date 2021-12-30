@@ -330,6 +330,7 @@ pub struct Ledger {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LedgersResponse {
     ledger: HashMap<String, Ledger>,
+    count: u64,
 }
 
 pub async fn ledgers(
