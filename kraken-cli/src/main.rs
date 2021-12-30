@@ -86,6 +86,13 @@ fn pretty_error(e: kraken::Error) -> anyhow::Error {
     }
 }
 
+fn display_csv<T: kraken::display::ToCSV>(response: T) {
+    println!("{}", T::columns().join("\t"));
+    for row in response.rows() {
+        println!("{}", row.join("\t"));
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let app = App::new("kraken-cli")
@@ -453,10 +460,20 @@ async fn main() -> Result<(), anyhow::Error> {
                     .await
                     .map_err(pretty_error)?,
             );
+            display_csv(
+                kraken::private::balance(&cred)
+                    .await
+                    .map_err(pretty_error)?,
+            );
         }
         Some("balance-ex") => {
             let cred = cred.ok_or(anyhow!("missing credentials"))?;
             display(
+                kraken::private::balance_ex(&cred)
+                    .await
+                    .map_err(pretty_error)?,
+            );
+            display_csv(
                 kraken::private::balance_ex(&cred)
                     .await
                     .map_err(pretty_error)?,

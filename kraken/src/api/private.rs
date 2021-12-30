@@ -1,3 +1,4 @@
+use super::display::ToCSV;
 use super::request::*;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -6,6 +7,20 @@ use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BalanceResponse(HashMap<String, Decimal>);
+
+impl ToCSV for BalanceResponse {
+    fn columns() -> Vec<&'static str> {
+        return vec!["asset", "balance"];
+    }
+
+    fn rows(&self) -> Vec<Vec<String>> {
+        let mut rows = vec![];
+        for (k, v) in &self.0 {
+            rows.push(vec![k.to_string(), v.to_string()]);
+        }
+        rows
+    }
+}
 
 pub async fn balance(cred: &Credential) -> Result<BalanceResponse, Error> {
     let response = private_request(&cred, "/0/private/Balance", &[]).await?;
@@ -20,6 +35,24 @@ pub struct BalanceEx {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BalanceExResponse(HashMap<String, BalanceEx>);
+
+impl ToCSV for BalanceExResponse {
+    fn columns() -> Vec<&'static str> {
+        return vec!["asset", "balance", "hold_trade"];
+    }
+
+    fn rows(&self) -> Vec<Vec<String>> {
+        let mut rows = vec![];
+        for (k, v) in &self.0 {
+            rows.push(vec![
+                k.to_string(),
+                v.balance.to_string(),
+                v.hold_trade.to_string(),
+            ]);
+        }
+        rows
+    }
+}
 
 pub async fn balance_ex(cred: &Credential) -> Result<BalanceExResponse, Error> {
     let response = private_request(&cred, "/0/private/BalanceEx", &[]).await?;
