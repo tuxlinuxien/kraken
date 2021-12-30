@@ -33,7 +33,8 @@ pub struct Asset {
     display_decimals: u64,
 }
 
-pub type AssetsResponse = HashMap<String, Asset>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AssetsResponse(HashMap<String, Asset>);
 
 pub async fn assets(asset: Option<&[&str]>, aclass: Option<&str>) -> Result<AssetsResponse, Error> {
     let mut params: Vec<(&str, &str)> = vec![];
@@ -73,7 +74,8 @@ pub struct AssetPair {
     ordermin: Decimal,
 }
 
-pub type AssetPairResponse = HashMap<String, AssetPair>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AssetPairResponse(HashMap<String, AssetPair>);
 
 pub async fn asset_pair(pair: &[&str], info: Option<&str>) -> Result<AssetPairResponse, Error> {
     let mut params: Vec<(&str, &str)> = vec![];
@@ -99,7 +101,8 @@ pub struct AssetTickerInfo {
     o: Decimal,
 }
 
-pub type TickerResponse = HashMap<String, AssetTickerInfo>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TickerResponse(HashMap<String, AssetTickerInfo>);
 
 pub async fn ticker(pair: &str) -> Result<TickerResponse, Error> {
     let response = public_request("/0/public/Ticker", &[("pair", pair)]).await?;
@@ -124,7 +127,8 @@ pub type OHLCTickData = Vec<(
     u64,     // count
 )>;
 
-pub type OHLCResponse = HashMap<String, OHLC>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OHLCResponse(HashMap<String, OHLC>);
 
 pub async fn ohcl(
     pair: &str,
@@ -160,7 +164,8 @@ pub struct OrderBook {
     )>,
 }
 
-pub type DepthResponse = HashMap<String, OrderBook>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DepthResponse(HashMap<String, OrderBook>);
 
 pub async fn depth(pair: &str, count: Option<i64>) -> Result<DepthResponse, Error> {
     let mut params = vec![("pair", pair)];
@@ -180,9 +185,11 @@ pub enum Trade {
     Pair(TradeTickData),
 }
 
-pub type TradeTickData = Vec<(Decimal, Decimal, f64, String, String, String)>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TradeTickData(Vec<(Decimal, Decimal, f64, String, String, String)>);
 
-pub type TradesResponse = HashMap<String, Trade>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TradesResponse(HashMap<String, Trade>);
 
 pub async fn trades(pair: &str, since: Option<i64>) -> Result<TradesResponse, Error> {
     let mut params = vec![("pair", pair)];
@@ -202,9 +209,11 @@ pub enum Spread {
     Pair(SpreadData),
 }
 
-pub type SpreadData = Vec<(u64, Decimal, Decimal)>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SpreadData(Vec<(u64, Decimal, Decimal)>);
 
-pub type SpreadResponse = HashMap<String, Spread>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SpreadResponse(HashMap<String, Spread>);
 
 pub async fn spread(pair: &str, since: Option<i64>) -> Result<SpreadResponse, Error> {
     let mut params = vec![("pair", pair)];

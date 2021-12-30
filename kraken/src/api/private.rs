@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DefaultOnError};
 use std::collections::HashMap;
 
-pub type BalanceResponse = HashMap<String, Decimal>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BalanceResponse(HashMap<String, Decimal>);
 
 pub async fn balance(cred: &Credential) -> Result<BalanceResponse, Error> {
     let response = private_request(&cred, "/0/private/Balance", &[]).await?;
@@ -17,7 +18,8 @@ pub struct BalanceEx {
     hold_trade: Decimal,
 }
 
-pub type BalanceExResponse = HashMap<String, BalanceEx>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BalanceExResponse(HashMap<String, BalanceEx>);
 
 pub async fn balance_ex(cred: &Credential) -> Result<BalanceExResponse, Error> {
     let response = private_request(&cred, "/0/private/BalanceEx", &[]).await?;
@@ -160,7 +162,8 @@ pub async fn closed_orders(
     return load_response(&response);
 }
 
-pub type QueryOrdersResponse = HashMap<String, Order>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryOrdersResponse(HashMap<String, Order>);
 
 pub async fn query_orders(
     cred: &Credential,
@@ -250,7 +253,8 @@ pub async fn trades_history(
     return load_response(&response);
 }
 
-pub type QueryTradesResponse = HashMap<String, Trade>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryTradesResponse(HashMap<String, Trade>);
 
 pub async fn query_trades(
     cred: &Credential,
@@ -293,7 +297,8 @@ pub struct OpenPosition {
     oflags: String,
 }
 
-pub type OpenPositionsResponse = HashMap<String, OpenPosition>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OpenPositionsResponse(HashMap<String, OpenPosition>);
 
 pub async fn open_positions(
     cred: &Credential,
@@ -373,7 +378,8 @@ pub async fn ledgers(
     return load_response(&response);
 }
 
-pub type QueryLedgersResponse = HashMap<String, Ledger>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryLedgersResponse(HashMap<String, Ledger>);
 
 pub async fn query_ledgers(
     cred: &Credential,
